@@ -10,12 +10,14 @@ set(SOURCE_FILES
         lib/calc.h
         lib/iopins.c
         lib/iopins.h
+        lib/adc.c
+        lib/adc.h
         lib/nsdelay.h
         lib/spi.c
         lib/spi.h
         lib/usart.c
         lib/usart.h
-        )
+        pinout.h)
 
 include_directories(lib
         /usr/avr/include/)

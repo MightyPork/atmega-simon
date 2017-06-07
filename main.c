@@ -9,11 +9,74 @@
 // Include stuff from the library
 #include "lib/iopins.h"
 #include "lib/usart.h"
+#include "lib/spi.h"
+#include "lib/adc.h"
 
+#include "pinout.h"
 
-// Pins
-#define LED 13
+void setup_io(void)
+{
+	as_output(PIN_DISP_CP);
+	as_output(PIN_DISP_D);
+	as_output(PIN_DISP_STR);
 
+	as_input(PIN_KEY_1);
+	as_input(PIN_KEY_2);
+	as_input(PIN_KEY_3);
+	as_input(PIN_KEY_4);
+
+	as_output(PIN_NEOPIXEL);
+	as_output(PIN_DISP_OE);
+
+	as_input(PIN_PWR_KEY);
+	as_output(PIN_PWR_HOLD);
+
+	// PIN_LIGHT_SENSE is ADC exclusive, needs no config
+}
+
+// --- LED display brightness control ---
+#define DISP_BRIGHTNESS OCR2B
+void setup_pwm(void)
+{
+	// PWM for LED display dimming
+	TCCR2A |= (1 << WGM20) | (1 << WGM21) | (1 << COM2B1);
+	TCCR2B |= (1 << CS20);
+
+	DISP_BRIGHTNESS = 0x7F;
+}
+
+void main()
+{
+	usart_init(BAUD_115200);
+	usart_isr_rx_enable(true); // enable RX interrupt handler
+
+	setup_io();
+	setup_pwm();
+	adc_init(ADC_PRESC_128);
+
+	// SPI conf
+	spi_init_master(SPI_LSB_FIRST,
+					CPOL_1, CPHA_0,
+					SPI_DIV_2);
+
+	// globally enable interrupts
+	sei();
+
+	uint8_t cnt = 0;
+
+	while (1) {
+		pin_down(PIN_DISP_STR);
+		spi_send(cnt);
+		spi_send(cnt);
+		pin_up(PIN_DISP_STR);
+		cnt++;
+
+		_delay_ms(100);
+
+		// Brightness directly proportional to light level
+		DISP_BRIGHTNESS = 255 - adc_read_byte(6);
+	}
+}
 
 // UART receive handler
 ISR(USART_RX_vect)
@@ -21,25 +84,4 @@ ISR(USART_RX_vect)
 	// "ECHO" function:
 	uint8_t b = usart_rx();
 	usart_tx(b); // send back
-}
-
-
-void main()
-{
-	usart_init(BAUD_115200);
-	usart_isr_rx_enable(true); // enable RX interrupt handler
-
-	// configure pins
-	as_output(LED);
-
-	// globally enable interrupts (for the USART_RX handler)
-	sei();
-
-	while (1) {
-		usart_puts("Hello World!\r\n");
-
-		pin_toggle(13); // blink the LED
-
-		_delay_ms(500);
-	}
 }
