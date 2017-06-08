@@ -28,6 +28,7 @@
 #define DIGIT_9 (SEG_A|SEG_B|SEG_C|SEG_D|SEG_F|SEG_G)
 
 extern const uint8_t disp_digits[10];
+extern volatile uint8_t disp_brightness; // place to globally store display brightness
 
 void display_show(uint8_t dig0, uint8_t dig1);
 void display_show_number(uint8_t num);

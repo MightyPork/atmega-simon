@@ -13,8 +13,12 @@ const uint8_t disp_digits[10] = {
 	DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9
 };
 
+volatile uint8_t disp_brightness;
+
 void display_show(uint8_t dig0, uint8_t dig1)
 {
+	spi_send(0);
+	spi_send(0);
 	spi_send(dig1);
 	spi_send(dig0);
 	pin_down(PIN_DISP_STR);

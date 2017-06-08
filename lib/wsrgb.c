@@ -72,12 +72,14 @@ void ws_send_rgb24(rgb24_t rgb)
 /** Send array of colors */
 void ws_send_xrgb_array(const xrgb_t rgbs[], const uint8_t length)
 {
+	cli();
 	for (uint8_t i = 0; i < length; i++) {
 		const xrgb_t c = rgbs[i];
 		ws_send_byte(c.g);
 		ws_send_byte(c.r);
 		ws_send_byte(c.b);
 	}
+	sei();
 }
 
 /** Send array of colors */

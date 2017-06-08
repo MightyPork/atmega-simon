@@ -16,6 +16,7 @@
 
 #include "pinout.h"
 #include "display.h"
+#include "leds.h"
 
 /**
  * Configure pins
@@ -24,6 +25,7 @@ void setup_io(void)
 {
 	as_output(PIN_DISP_CP);
 	as_output(PIN_DISP_D);
+	pin_up(PIN_DISP_STR);
 	as_output(PIN_DISP_STR);
 	as_output(PIN_DISP_OE);
 
@@ -43,7 +45,7 @@ void setup_io(void)
 }
 
 // --- LED display brightness control ---
-volatile uint8_t disp_brightness;
+// disp brightness defined in display.h
 #define LIGHT_ADC_CHANNEL 6
 
 /**
@@ -141,6 +143,8 @@ ISR(TIMER1_COMPA_vect)
 		// shut down
 		pin_down(PIN_PWR_HOLD);
 	}
+
+	leds_show();
 }
 
 
@@ -163,7 +167,7 @@ void main()
 
 	// SPI conf
 	// TODO verify the cpha and cpol. those seem to work, but it's a guess
-	spi_init_master(SPI_LSB_FIRST, CPOL_1, CPHA_0, SPI_DIV_2);
+	spi_init_master(SPI_LSB_FIRST, CPOL_1, CPHA_0, SPI_DIV_4);
 	adc_init(ADC_PRESC_128);
 	setup_pwm();
 
@@ -177,7 +181,7 @@ void main()
 	// globally enable interrupts
 	sei();
 
-	uint32_t pixels[4] = {0xFF0000, 0xFFFF00, 0x00FF00, 0x0000FF};
+	leds_set(0xFFFF00, 0x00FF00, 0x0000FF, 0xFF0000);
 
 	uint8_t cnt = 0;
 
@@ -187,8 +191,7 @@ void main()
 		cnt++;
 		cnt = cnt % 100;
 
-		ws_send_rgb24_array(pixels, 4);
-		_delay_ms(300);
+		_delay_ms(150);
 
 		sprintf(buf, "BRT = %d\r\n", disp_brightness);
 		usart_puts(buf);

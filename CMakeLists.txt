@@ -25,7 +25,7 @@ set(SOURCE_FILES
         lib/wsrgb.h
         pinout.h
         display.c
-        display.h)
+        display.h leds.c leds.h)
 
 include_directories(lib
         /usr/avr/include/)
