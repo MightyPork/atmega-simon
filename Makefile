@@ -31,9 +31,12 @@ OBJS += lib/iopins.o
 OBJS += lib/spi.o
 OBJS += lib/adc.o
 OBJS += lib/debounce.o
+OBJS += lib/timebase.o
 OBJS += lib/wsrgb.o
 OBJS += lib/color.o
 OBJS += display.o
+OBJS += game.o
+OBJS += leds.o
 
 # Dirs with header files
 INCL_DIRS = . lib/
@@ -52,7 +55,7 @@ CFLAGS += -ffunction-sections -fdata-sections -Os -Wno-unused-parameter
 
 LDFLAGS = -Wl,--gc-sections -Wl,--relax -lm
 
-#LD_FLAGS += -Wl,-u,vfprintf -lprintf_flt -lm  ## for floating-point printf
+#LD_FLAGS += -Wl,-u,vfprintf -lprintf_flt  ## for floating-point printf
 LD_FLAGS += -Wl,-u,vfprintf -lprintf_min      ## for smaller printf
 
 #############################################

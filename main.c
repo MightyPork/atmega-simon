@@ -13,10 +13,12 @@
 #include "lib/spi.h"
 #include "lib/adc.h"
 #include "lib/debounce.h"
+#include "lib/timebase.h"
 
 #include "pinout.h"
 #include "display.h"
 #include "leds.h"
+#include "game.h"
 
 /**
  * Configure pins
@@ -76,14 +78,6 @@ ISR(TIMER2_OVF_vect)
 
 // --- Debouncer slot allocation constants ---
 volatile bool booting = true;
-volatile uint16_t time_ms = 0;
-
-// (normally those would be retvals from debo_add())
-#define DB_KEY_POWER 0
-#define DB_KEY_1     1
-#define DB_KEY_2     2
-#define DB_KEY_3     3
-#define DB_KEY_4     4
 
 volatile uint16_t time_pwr_pressed = 0;
 
@@ -102,26 +96,14 @@ void key_cb_power(uint8_t num, bool state)
 	}
 }
 
-/** Button state changed */
-void key_cb_button(uint8_t num, bool state)
-{
-	// TODO
-	// num - 1,2,3,4
-	usart_puts("BTN ");
-	usart_tx('0'+num);
-	usart_tx(' ');
-	usart_tx('0'+state);
-	usart_puts("\r\n");
-}
-
 void setup_debouncer(void)
 {
 	// Debouncer config
 	debo_add(PIN_PWR_KEY, key_cb_power);
-	debo_add(PIN_KEY_1, key_cb_button);
-	debo_add(PIN_KEY_2, key_cb_button);
-	debo_add(PIN_KEY_3, key_cb_button);
-	debo_add(PIN_KEY_4, key_cb_button);
+	debo_add(PIN_KEY_1, game_button_handler);
+	debo_add(PIN_KEY_2, game_button_handler);
+	debo_add(PIN_KEY_3, game_button_handler);
+	debo_add(PIN_KEY_4, game_button_handler);
 
 	// Timer 1 - CTC, to 16000 (1 ms interrupt)
 	OCR1A = 16000;
@@ -129,24 +111,27 @@ void setup_debouncer(void)
 	TCCR1B |= _BV(WGM12) | _BV(CS10);
 }
 
+// SysTick
 ISR(TIMER1_COMPA_vect)
 {
 	// Tick 1 ms
 	debo_tick();
-	time_ms++;
+	timebase_ms_cb();
+	leds_show();
+}
 
-	// Shut down by just holding the button - better feedback for user
-	if (debo_get_pin(DB_KEY_POWER)
+// Shut down by just holding the button - better feedback for user
+void task_check_shutdown_btn(void *unused) {
+	(void)unused;
+
+	if (debo_get_pin(0) // 0 - first
 		&& !booting
 		&& (time_ms - time_pwr_pressed > 1000)) {
 		usart_puts("Power OFF\r\n");
 		// shut down
 		pin_down(PIN_PWR_HOLD);
 	}
-
-	leds_show();
 }
-
 
 /**
  * Main function
@@ -169,6 +154,10 @@ void main()
 	// TODO verify the cpha and cpol. those seem to work, but it's a guess
 	spi_init_master(SPI_LSB_FIRST, CPOL_1, CPHA_0, SPI_DIV_4);
 	adc_init(ADC_PRESC_128);
+
+	// clear
+	display_show(0,0);
+
 	setup_pwm();
 
 	setup_debouncer();
@@ -178,22 +167,12 @@ void main()
 	pin_down(PIN_NEOPIXEL_PWRN);
 	ws_init();
 
+	add_periodic_task(task_check_shutdown_btn, NULL, 1, 0);
+
 	// globally enable interrupts
 	sei();
 
-	leds_set(0xFFFF00, 0x00FF00, 0x0000FF, 0xFF0000);
+	usart_puts("Starting game...\r\n");
 
-	uint8_t cnt = 0;
-
-	char buf[100];
-	while (1) {
-		display_show_number(cnt);
-		cnt++;
-		cnt = cnt % 100;
-
-		_delay_ms(150);
-
-		sprintf(buf, "BRT = %d\r\n", disp_brightness);
-		usart_puts(buf);
-	}
+	game_main();
 }

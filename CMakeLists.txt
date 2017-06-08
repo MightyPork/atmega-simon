@@ -6,7 +6,6 @@ project(firmware)
 set(CMAKE_CXX_STANDARD GNU99)
 
 set(SOURCE_FILES
-        main.c
         lib/calc.h
         lib/iopins.c
         lib/iopins.h
@@ -23,9 +22,19 @@ set(SOURCE_FILES
         lib/color.h
         lib/wsrgb.c
         lib/wsrgb.h
+        lib/timebase.c
+        lib/timebase.h
+        main.c
         pinout.h
+        game.c
+        game.h
         display.c
-        display.h leds.c leds.h)
+        display.h
+        leds.c
+        leds.h
+        game.c
+        game.h
+        common.h)
 
 include_directories(lib
         /usr/avr/include/)
