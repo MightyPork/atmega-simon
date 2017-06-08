@@ -30,7 +30,7 @@
 #define PIN_PWR_KEY A4 // Direct input from the power key, used for power-off
 #define PIN_PWR_HOLD A5 // Hold the buck enabled. Set 0 for shutdown
 
-// Ambient light sensor (Vdd -> 10k -> * -> phototransistor -> GND)
+// Ambient light sensor (Vdd -> 10k -> * -> photo transistor -> GND)
 #define PIN_LIGHT_SENSE A6 // ADC exclusive pin
 
 #endif //FIRMWARE_PINOUT_H

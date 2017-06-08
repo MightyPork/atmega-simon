@@ -49,7 +49,7 @@ CFLAGS += -ffunction-sections -fdata-sections -Os
 LDFLAGS = -Wl,--gc-sections -Wl,--relax -lm
 
 #LD_FLAGS += -Wl,-u,vfprintf -lprintf_flt -lm  ## for floating-point printf
-#LD_FLAGS += -Wl,-u,vfprintf -lprintf_min      ## for smaller printf
+LD_FLAGS += -Wl,-u,vfprintf -lprintf_min      ## for smaller printf
 
 #############################################
 
