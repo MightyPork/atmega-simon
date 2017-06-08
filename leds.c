@@ -23,6 +23,7 @@ void leds_show(void)
 	xrgb_t arr[4];
 	for (uint8_t i = 0; i < 4; i++) {
 		float db = (float)disp_brightness / 255.0f;
+		if (db < 0.15) db = 0.15;
 		arr[i].r = (uint8_t) ((float)rgb24_r(leds[i]) * db);
 		arr[i].g = (uint8_t) ((float)rgb24_g(leds[i]) * db);
 		arr[i].b = (uint8_t) ((float)rgb24_b(leds[i]) * db);

@@ -20,8 +20,8 @@
 
 #define C_DARK rgb24(0,0,0)
 #define C_DIMWHITE rgb24(30,30,30)
-#define C_OKGREEN rgb24(30,200,0)
-#define C_CRIMSON rgb24(255,0,0)
+#define C_OKGREEN rgb24(20,160,0)
+#define C_CRIMSON rgb24(220,0,5)
 
 #define C_DIMRED rgb24(100,0,0)
 #define C_DIMGREEN rgb24(0,100,0)
@@ -169,6 +169,7 @@ void suc_eff_callback(void *onOff)
 	bool on = (bool) onOff;
 
 	if (on) {
+		display_show_number(game_revealed_n-1);
 		for (uint8_t i = 0; i < 4; i++) screen[i] = C_OKGREEN;
 		schedule_task(suc_eff_callback, 0, SUC_EFF_TIME, false);
 	} else {
@@ -254,6 +255,8 @@ void prepare_sequence()
 	repeat_count = 0;
 }
 
+volatile uint16_t idle_cnt = 0;
+
 /** Main function, called from MX-generated main.c */
 void game_main(void)
 {
@@ -262,16 +265,15 @@ void game_main(void)
 	// we'll init the sequence when user first presses a button - the time is used as a seed
 
 	enum GameState_enum last_state = STATE_NEW_GAME;
-	uint16_t cnt = 0;
 	while (1) {
 		if (GameState == last_state) {
 			if (GameState == STATE_NEW_GAME) {
-				if (cnt == 20 && !holding_new_game_button) {
+				if (idle_cnt == 20 && !holding_new_game_button) {
 					// clear after 2 secs
 					display_show(SEG_G, SEG_G);
 				}
 
-				if (cnt == 3000) {
+				if (idle_cnt == 3000) {
 					// Shut down after 5 mins
 					screen[0] = C_CRIMSON;
 					screen[1] = C_CRIMSON;
@@ -283,20 +285,20 @@ void game_main(void)
 					while(1); // wait for shutdown
 				}
 			} else {
-				if (cnt > 120) {// 12 secs = stop game.
+				if (idle_cnt > 150) {// 15 secs = stop game.
 					// reset state
 					enter_state(STATE_NEW_GAME);
 					show_screen();
 					display_show(SEG_G, SEG_G);
-					cnt = 0;
+					idle_cnt = 0;
 				}
 			}
 		} else {
 			last_state = GameState;
-			cnt = 0;
+			idle_cnt = 0;
 		}
 
-		cnt++;
+		idle_cnt++;
 		delay_ms(100);
 	}
 }
@@ -335,6 +337,9 @@ void game_button_handler(uint8_t button, bool press)
 			}
 			break;
 		case STATE_USER_INPUT:
+			// Reset idle counter, so it doesn't cut off in the middle of input
+			idle_cnt = 0;
+
 			// user is entering a color
 			memcpy(screen, dim, sizeof(screen));
 
@@ -351,7 +356,6 @@ void game_button_handler(uint8_t button, bool press)
 					if (game_repeat_n == game_revealed_n) {
 						// repeated all, good work!
 						game_revealed_n++;
-						display_show_number(game_revealed_n-1);
 						enter_state(STATE_SUCCESS_EFFECT);
 					}
 				} else {

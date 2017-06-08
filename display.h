@@ -32,5 +32,6 @@ extern volatile uint8_t disp_brightness; // place to globally store display brig
 
 void display_show(uint8_t dig0, uint8_t dig1);
 void display_show_number(uint8_t num);
+void setup_pwm(void);
 
 #endif //FIRMWARE_DISPLAY_H

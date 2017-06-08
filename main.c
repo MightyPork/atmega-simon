@@ -46,36 +46,6 @@ void setup_io(void)
 	// PIN_LIGHT_SENSE is ADC exclusive, needs no config
 }
 
-// --- LED display brightness control ---
-// disp brightness defined in display.h
-#define LIGHT_ADC_CHANNEL 6
-
-/**
- * PWM for LED display dimming
- */
-void setup_pwm(void)
-{
-	OCR2B = disp_brightness = 0xFF;
-	TCCR2A |= _BV(WGM20) | _BV(WGM21) | _BV(COM2B1);
-	TIMSK2 |= _BV(TOIE2); // enable ISR
-	TCCR2B |= _BV(CS20);
-
-	adc_start_conversion(LIGHT_ADC_CHANNEL);
-}
-
-/** ISR that writes the PWM register - to avoid glitches */
-ISR(TIMER2_OVF_vect)
-{
-	// convert in background
-	if (adc_ready()) {
-		disp_brightness = 255 - adc_read_8bit(); // inverse
-		adc_start_conversion(LIGHT_ADC_CHANNEL);
-	}
-
-	OCR2B = disp_brightness;
-}
-
-
 // --- Debouncer slot allocation constants ---
 volatile bool booting = true;
 
