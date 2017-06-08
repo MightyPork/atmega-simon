@@ -58,6 +58,8 @@ enum GameState_enum {
 /** Current game state */
 enum GameState_enum GameState = STATE_NEW_GAME;
 
+volatile bool holding_new_game_button = false;
+
 /** Screen colors */
 uint32_t screen[4] = {0, 0, 0, 0};
 const uint32_t brt[4] = {C_BRT1, C_BRT2, C_BRT3, C_BRT4};
@@ -125,6 +127,9 @@ suc:
 /** Enter state - callback for delayed state change */
 void deferred_enter_state(void *state)
 {
+	// clear flag that button was held
+	holding_new_game_button = false;
+
 	enter_state((enum GameState_enum) state);
 }
 
@@ -261,8 +266,8 @@ void game_main(void)
 	while (1) {
 		if (GameState == last_state) {
 			if (GameState == STATE_NEW_GAME) {
-				if (cnt == 50) {
-					// clear after 5 secs
+				if (cnt == 20 && !holding_new_game_button) {
+					// clear after 2 secs
 					display_show(SEG_G, SEG_G);
 				}
 
@@ -275,9 +280,10 @@ void game_main(void)
 					show_screen();
 					delay_s(2000);
 					pin_down(PIN_PWR_HOLD);
+					while(1); // wait for shutdown
 				}
 			} else {
-				if (cnt > 150) {// 15 secs = stop game.
+				if (cnt > 120) {// 12 secs = stop game.
 					// reset state
 					enter_state(STATE_NEW_GAME);
 					show_screen();
@@ -310,6 +316,7 @@ void game_button_handler(uint8_t button, bool press)
 			if (press) {
 				// feedback
 				display_show_number(0); // show 0
+				holding_new_game_button = true;
 			}
 
 			if (!press) { // released

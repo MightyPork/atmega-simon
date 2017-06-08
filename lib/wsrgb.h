@@ -21,6 +21,8 @@
 
 // --- functions for RGB strips ---
 
+extern volatile bool ws_no_cli_sei;
+
 /** Initialize OI */
 void ws_init();
 

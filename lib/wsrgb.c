@@ -11,6 +11,8 @@
 
 /* Driver code for WS2812B */
 
+volatile bool ws_no_cli_sei = false;
+
 void ws_init()
 {
 	as_output(WS_PIN);
@@ -72,27 +74,27 @@ void ws_send_rgb24(rgb24_t rgb)
 /** Send array of colors */
 void ws_send_xrgb_array(const xrgb_t rgbs[], const uint8_t length)
 {
-	cli();
+	if (!ws_no_cli_sei) cli();
 	for (uint8_t i = 0; i < length; i++) {
 		const xrgb_t c = rgbs[i];
 		ws_send_byte(c.g);
 		ws_send_byte(c.r);
 		ws_send_byte(c.b);
 	}
-	sei();
+	if (!ws_no_cli_sei) sei();
 }
 
 /** Send array of colors */
 void ws_send_rgb24_array(const rgb24_t rgbs[], const uint8_t length)
 {
-	cli();
+	if (!ws_no_cli_sei) cli();
 	for (uint8_t i = 0; i < length; i++) {
 		const rgb24_t c = rgbs[i];
 		ws_send_byte(rgb24_g(c));
 		ws_send_byte(rgb24_r(c));
 		ws_send_byte(rgb24_b(c));
 	}
-	sei();
+	if (!ws_no_cli_sei) sei();
 }
 
 //#define ws_send_rgb24_array(rgbs, length) __ws_send_array_proto((rgbs), (length), rgb24)
