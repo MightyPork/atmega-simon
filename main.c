@@ -5,6 +5,7 @@
 #include <stdint.h>          // C header for int types like uint8_t
 #include <stdbool.h>         // C header for the bool type
 #include <stdio.h>
+#include <wsrgb.h>
 
 // Include stuff from the library
 #include "lib/iopins.h"
@@ -14,6 +15,7 @@
 #include "lib/debounce.h"
 
 #include "pinout.h"
+#include "display.h"
 
 /**
  * Configure pins
@@ -170,21 +172,23 @@ void main()
 	// Turn neopixels power ON - voltage will have stabilized by now
 	// and no glitches should occur
 	pin_down(PIN_NEOPIXEL_PWRN);
+	ws_init();
 
 	// globally enable interrupts
 	sei();
+
+	uint32_t pixels[4] = {0xFF0000, 0xFFFF00, 0x00FF00, 0x0000FF};
 
 	uint8_t cnt = 0;
 
 	char buf[100];
 	while (1) {
-		pin_down(PIN_DISP_STR);
-		spi_send(cnt);
-		spi_send(cnt);
-		pin_up(PIN_DISP_STR);
+		display_show_number(cnt);
 		cnt++;
+		cnt = cnt % 100;
 
-		_delay_ms(100);
+		ws_send_rgb24_array(pixels, 4);
+		_delay_ms(300);
 
 		sprintf(buf, "BRT = %d\r\n", disp_brightness);
 		usart_puts(buf);

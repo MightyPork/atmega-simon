@@ -33,6 +33,7 @@ OBJS += lib/adc.o
 OBJS += lib/debounce.o
 OBJS += lib/wsrgb.o
 OBJS += lib/color.o
+OBJS += display.o
 
 # Dirs with header files
 INCL_DIRS = . lib/

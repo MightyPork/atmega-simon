@@ -1,6 +1,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <stdint.h>
+#include <avr/interrupt.h>
 
 #include "iopins.h"
 #include "nsdelay.h"
@@ -82,12 +83,14 @@ void ws_send_xrgb_array(const xrgb_t rgbs[], const uint8_t length)
 /** Send array of colors */
 void ws_send_rgb24_array(const rgb24_t rgbs[], const uint8_t length)
 {
+	cli();
 	for (uint8_t i = 0; i < length; i++) {
 		const rgb24_t c = rgbs[i];
 		ws_send_byte(rgb24_g(c));
 		ws_send_byte(rgb24_r(c));
 		ws_send_byte(rgb24_b(c));
 	}
+	sei();
 }
 
 //#define ws_send_rgb24_array(rgbs, length) __ws_send_array_proto((rgbs), (length), rgb24)

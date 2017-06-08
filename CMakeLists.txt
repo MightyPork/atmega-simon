@@ -7,7 +7,6 @@ set(CMAKE_CXX_STANDARD GNU99)
 
 set(SOURCE_FILES
         main.c
-        debo_config.h
         lib/calc.h
         lib/iopins.c
         lib/iopins.h
@@ -24,7 +23,9 @@ set(SOURCE_FILES
         lib/color.h
         lib/wsrgb.c
         lib/wsrgb.h
-        pinout.h)
+        pinout.h
+        display.c
+        display.h)
 
 include_directories(lib
         /usr/avr/include/)
