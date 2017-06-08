@@ -30,6 +30,9 @@ OBJS += lib/usart.o
 OBJS += lib/iopins.o
 OBJS += lib/spi.o
 OBJS += lib/adc.o
+OBJS += lib/debounce.o
+OBJS += lib/wsrgb.o
+OBJS += lib/color.o
 
 # Dirs with header files
 INCL_DIRS = . lib/
@@ -44,7 +47,7 @@ CFLAGS = -std=gnu99 -mmcu=$(MCU) $(DEFS) $(INCL_DIRS:%=-I%)
 CFLAGS += -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums -ffreestanding
 CFLAGS += -Wall -Wno-main -Wno-strict-prototypes -Wno-comment
 CFLAGS += -g2 -Wextra -Wfatal-errors -Wno-unused-but-set-variable
-CFLAGS += -ffunction-sections -fdata-sections -Os
+CFLAGS += -ffunction-sections -fdata-sections -Os -Wno-unused-parameter
 
 LDFLAGS = -Wl,--gc-sections -Wl,--relax -lm
 
