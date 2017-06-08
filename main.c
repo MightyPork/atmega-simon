@@ -22,6 +22,7 @@ void setup_io(void)
 	as_output(PIN_DISP_CP);
 	as_output(PIN_DISP_D);
 	as_output(PIN_DISP_STR);
+	as_output(PIN_DISP_OE);
 
 	as_input(PIN_KEY_1);
 	as_input(PIN_KEY_2);
@@ -29,12 +30,11 @@ void setup_io(void)
 	as_input(PIN_KEY_4);
 
 	as_output(PIN_NEOPIXEL);
-	as_output(PIN_DISP_OE);
+	as_output(PIN_NEOPIXEL_PWRN);
+	pin_up(PIN_NEOPIXEL_PWRN); // turn neopixels OFF
 
 	as_input(PIN_PWR_KEY);
 	as_output(PIN_PWR_HOLD);
-	as_output(PIN_NEOPIXEL_PWRN);
-	pin_up(PIN_NEOPIXEL_PWRN); // turn neopixels OFF
 
 	// PIN_LIGHT_SENSE is ADC exclusive, needs no config
 }
@@ -50,7 +50,7 @@ void setup_pwm(void)
 {
 	OCR2B = disp_brightness = 0xFF;
 	TCCR2A |= _BV(WGM20) | _BV(WGM21) | _BV(COM2B1);
-	TIMSK2 |= _BV(TOIE2);
+	TIMSK2 |= _BV(TOIE2); // enable ISR
 	TCCR2B |= _BV(CS20);
 
 	adc_start_conversion(LIGHT_ADC_CHANNEL);
@@ -69,7 +69,7 @@ ISR(TIMER2_OVF_vect)
 }
 
 /**
- * Let's gooo
+ * Main function
  */
 void main()
 {
@@ -78,10 +78,13 @@ void main()
 
 	setup_io();
 
-	// Stay on
-	pin_up(D13); // the on-board LED (also SPI clk)
+	// The Arduino bootloader waits ~ 2 seconds after power on listening on UART,
+	// which in this case also serves as a debounce delay for the power switch
+
+	pin_up(D13); // the on-board LED (also SPI clk) - indication for the user
+	// Stay on - hold the EN pin high
 	pin_up(PIN_PWR_HOLD);
-	// Wait for user to release the power key
+	// Wait for user to release the power key (no debounce needed here)
 	while (pin_is_high(PIN_PWR_KEY));
 
 	// SPI conf
@@ -90,7 +93,8 @@ void main()
 	adc_init(ADC_PRESC_128);
 	setup_pwm();
 
-	// Turn neopixels ON
+	// Turn neopixels power ON - voltage will have stabilized by now
+	// and no glitches should occur
 	pin_down(PIN_NEOPIXEL_PWRN);
 
 	// globally enable interrupts
