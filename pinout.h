@@ -12,7 +12,7 @@
 #define PIN_DISP_D   D11 // MOSI
 #define PIN_DISP_CP  D13 // SCK
 #define PIN_DISP_STR D10 // NSS, unused for SPI
-#define PIN_DISP_OE  D3  // SCK
+#define PIN_DISP_OE  D3  // OE (PWM)
 
 // Touch keys
 #define PIN_KEY_1 A0
@@ -25,6 +25,7 @@
 
 // NeoPixel data
 #define PIN_NEOPIXEL D2
+#define PIN_NEOPIXEL_PWRN D4 // PMOS gate
 
 // Power
 #define PIN_PWR_KEY A4 // Direct input from the power key, used for power-off

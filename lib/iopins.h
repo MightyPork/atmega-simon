@@ -108,12 +108,12 @@ bool    pin_read_n(uint8_t pin);
 
 
 /** CHeck if pin is low */
-#define pin_is_low(pin)   (get_pin(pin) == 0)
+#define pin_is_low(pin)   (pin_read(pin) == 0)
 bool    pin_is_low_n(uint8_t pin);
 
 
 /** CHeck if pin is high */
-#define pin_is_high(pin)  (get_pin(pin) != 0)
+#define pin_is_high(pin)  (pin_read(pin) != 0)
 bool    pin_is_high_n(uint8_t pin);
 
 

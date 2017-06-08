@@ -33,6 +33,8 @@ void setup_io(void)
 
 	as_input(PIN_PWR_KEY);
 	as_output(PIN_PWR_HOLD);
+	as_output(PIN_NEOPIXEL_PWRN);
+	pin_up(PIN_NEOPIXEL_PWRN); // turn neopixels OFF
 
 	// PIN_LIGHT_SENSE is ADC exclusive, needs no config
 }
@@ -74,13 +76,22 @@ void main()
 	usart_init(BAUD_115200);
 	//usart_isr_rx_enable(true); // enable RX interrupt handler
 
-	adc_init(ADC_PRESC_128);
 	setup_io();
-	setup_pwm();
+
+	// Stay on
+	pin_up(D13); // the on-board LED (also SPI clk)
+	pin_up(PIN_PWR_HOLD);
+	// Wait for user to release the power key
+	while (pin_is_high(PIN_PWR_KEY));
 
 	// SPI conf
 	// TODO verify the cpha and cpol. those seem to work, but it's a guess
 	spi_init_master(SPI_LSB_FIRST, CPOL_1, CPHA_0, SPI_DIV_2);
+	adc_init(ADC_PRESC_128);
+	setup_pwm();
+
+	// Turn neopixels ON
+	pin_down(PIN_NEOPIXEL_PWRN);
 
 	// globally enable interrupts
 	sei();
