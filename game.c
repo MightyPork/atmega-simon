@@ -280,7 +280,7 @@ void game_main(void)
 					screen[2] = C_CRIMSON;
 					screen[3] = C_CRIMSON;
 					show_screen();
-					delay_s(2000);
+					delay_s(1);
 					pin_down(PIN_PWR_HOLD);
 					while(1); // wait for shutdown
 				}

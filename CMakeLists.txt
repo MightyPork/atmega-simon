@@ -33,8 +33,7 @@ set(SOURCE_FILES
         leds.c
         leds.h
         game.c
-        game.h
-        common.h)
+        game.h)
 
 include_directories(lib
         /usr/avr/include/)
