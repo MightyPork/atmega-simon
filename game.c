@@ -10,11 +10,13 @@
 #include <stdlib.h>
 #include <avr/io.h>
 #include <iopins.h>
+#include <usart.h>
 #include "lib/color.h"
 #include "leds.h"
 #include "lib/timebase.h"
 #include "display.h"
 #include "pinout.h"
+#include "rng.h"
 
 //region Colors
 
@@ -72,13 +74,6 @@ const uint32_t dimwhite[4] = {C_DIMWHITE, C_DIMWHITE, C_DIMWHITE, C_DIMWHITE};
 #define SUC_EFF_TIME 500
 #define FAIL_EFF_TIME 1000
 
-/** Sequence of colors to show. Seed is constant thorough a game.
- * rng_state is used by rand_r() for building the sequence. */
-uint32_t game_seed;
-unsigned long game_rng_state;
-uint8_t last_item;
-uint8_t repeat_count;
-
 /** Nr of revealed colors in sequence */
 uint8_t game_revealed_n;
 /** Nr of next color to replay/input */
@@ -92,36 +87,6 @@ void enter_state(enum GameState_enum state);
 void show_screen()
 {
 	leds_set(screen);
-}
-
-/** Prepare rng sequence for replay / test */
-void reset_sequence()
-{
-	game_rng_state = game_seed;
-	last_item = 99;
-	repeat_count = 0;
-}
-
-/** Get next item in the sequence */
-uint8_t get_next_item()
-{
-	uint8_t item;
-	while (1) {
-		item = (uint8_t) rand_r(&game_rng_state) & 0x03;
-		if (item == last_item) {
-			repeat_count++;
-			if (repeat_count < 2) {
-				goto suc;
-			}
-		} else {
-			last_item = item;
-			repeat_count = 0;
-			goto suc;
-		}
-	}
-
-suc:
-	return item;
 }
 
 /** Enter state - callback for delayed state change */
@@ -144,7 +109,7 @@ void replay_callback(void *onOff)
 	screen[3] = C_DARK;
 
 	if (on) {
-		uint8_t color = get_next_item();
+		uint8_t color = rng_next_item();
 		game_replay_n++;
 		screen[color] = brt[color];
 		show_screen();
@@ -208,6 +173,7 @@ void enter_state(enum GameState_enum state)
 
 	switch (state) {
 		case STATE_NEW_GAME:
+			usart_puts("State: new game\r\n");
 			// new game - idle state before new game is started
 
 			// all dimly lit
@@ -215,28 +181,32 @@ void enter_state(enum GameState_enum state)
 			break;
 
 		case STATE_REPLAY:
+			usart_puts("State: replay\r\n");
 			game_replay_n = 0;
-			reset_sequence();
+			rng_restart();
 
 			// Start replay
 			replay_callback((void *) 1);
 			break;
 
 		case STATE_USER_INPUT:
+			usart_puts("State: repeat\r\n");
 			memcpy(screen, dim, sizeof(screen));
 
 			// Start entering & checking
 			game_repeat_n = 0;
-			reset_sequence();
+			rng_restart();
 			break;
 
 		case STATE_SUCCESS_EFFECT:
+			usart_puts("State: succ\r\n");
 			memcpy(screen, dim, sizeof(screen));
 			//suc_eff_callback((void *) 1);
 			schedule_task(suc_eff_callback, (void *) 1, 250, false);
 			break;
 
 		case STATE_FAIL_EFFECT:
+			usart_puts("State: fail\r\n");
 			memcpy(screen, dim, sizeof(screen));
 			//fail_eff_callback((void *) 1);
 			schedule_task(fail_eff_callback, (void *) 1, 250, false);
@@ -249,15 +219,13 @@ void enter_state(enum GameState_enum state)
 /** Prepare new sequence, using time for seed. */
 void prepare_sequence()
 {
-	game_seed = time_ms;
-	game_rng_state = game_seed;
-	last_item = 99;
-	repeat_count = 0;
+	rng_set_seed(time_ms);
+	rng_restart();
 }
 
 volatile uint16_t idle_cnt = 0;
 
-/** Main function, called from MX-generated main.c */
+/** game main function */
 void game_main(void)
 {
 	display_show(SEG_G, SEG_G); // two dashes...
@@ -268,13 +236,13 @@ void game_main(void)
 	while (1) {
 		if (GameState == last_state) {
 			if (GameState == STATE_NEW_GAME) {
-				if (idle_cnt == 20 && !holding_new_game_button) {
-					// clear after 2 secs
+				if (idle_cnt == 25 && !holding_new_game_button) {
+					usart_puts("clear highscore display\r\n");
 					display_show(SEG_G, SEG_G);
 				}
 
 				if (idle_cnt == 3000) {
-					// Shut down after 5 mins
+					usart_puts("automatic shutdown\r\n");
 					screen[0] = C_CRIMSON;
 					screen[1] = C_CRIMSON;
 					screen[2] = C_CRIMSON;
@@ -285,8 +253,9 @@ void game_main(void)
 					while(1); // wait for shutdown
 				}
 			} else {
-				if (idle_cnt > 150) {// 15 secs = stop game.
+				if (idle_cnt > 200) {
 					// reset state
+					usart_puts("game reset, user walked away\r\n");
 					enter_state(STATE_NEW_GAME);
 					show_screen();
 					display_show(SEG_G, SEG_G);
@@ -316,12 +285,14 @@ void game_button_handler(uint8_t button, bool press)
 	switch (GameState) {
 		case STATE_NEW_GAME:
 			if (press) {
+				usart_puts("pressed a new-game button\r\n");
 				// feedback
 				display_show_number(0); // show 0
 				holding_new_game_button = true;
 			}
 
 			if (!press) { // released
+				usart_puts("game begins\r\n");
 				// user wants to start playing
 				prepare_sequence();
 				game_revealed_n = 1; // start with 1 revealed
@@ -336,6 +307,7 @@ void game_button_handler(uint8_t button, bool press)
 				//enter_state(STATE_REPLAY);
 			}
 			break;
+
 		case STATE_USER_INPUT:
 			// Reset idle counter, so it doesn't cut off in the middle of input
 			idle_cnt = 0;
@@ -349,16 +321,17 @@ void game_button_handler(uint8_t button, bool press)
 			} else {
 				// Button is released
 				// Verify correctness
-				uint8_t expected = get_next_item();
+				uint8_t expected = rng_next_item();
 				if (expected == button) {
-					// good!
+					usart_puts("good key!\r\n");
 					game_repeat_n++;
 					if (game_repeat_n == game_revealed_n) {
-						// repeated all, good work!
+						usart_puts("repeated all, good work!\r\n");
 						game_revealed_n++;
 						enter_state(STATE_SUCCESS_EFFECT);
 					}
 				} else {
+					usart_puts("oops bad key\r\n");
 					enter_state(STATE_FAIL_EFFECT);
 				}
 			}
@@ -367,7 +340,7 @@ void game_button_handler(uint8_t button, bool press)
 			break;
 
 		default:
-			// discard button press, not expecting input now
+			usart_puts("discard button press, not expecting input now\r\n");
 			break;
 	}
 }

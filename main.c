@@ -96,7 +96,7 @@ void task_check_shutdown_btn(void *unused) {
 
 	if (debo_get_pin(0) // 0 - first
 		&& !booting
-		&& (time_ms - time_pwr_pressed > 1000)) {
+		&& (time_ms - time_pwr_pressed > 250)) {
 		cli();
 
 		ws_no_cli_sei = true;

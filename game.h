@@ -8,8 +8,17 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/**
+ * Game entry point
+ */
 void game_main(void);
 
+/**
+ * Button press handler
+ *
+ * @param button
+ * @param press
+ */
 void game_button_handler(uint8_t button, bool press);
 
 #endif //FIRMWARE_GAME_H

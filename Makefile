@@ -37,6 +37,7 @@ OBJS += lib/color.o
 OBJS += display.o
 OBJS += game.o
 OBJS += leds.o
+OBJS += rng.o
 
 # Dirs with header files
 INCL_DIRS = . lib/
