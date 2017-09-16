@@ -19,6 +19,6 @@ void game_main(void);
  * @param button
  * @param press
  */
-void game_button_handler(uint8_t button, bool press);
+void onGameButton(uint8_t button, bool press);
 
 #endif //FIRMWARE_GAME_H

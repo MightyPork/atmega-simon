@@ -70,10 +70,10 @@ void setup_debouncer(void)
 {
 	// Debouncer config
 	debo_add(PIN_PWR_KEY, key_cb_power);
-	debo_add(PIN_KEY_1, game_button_handler);
-	debo_add(PIN_KEY_2, game_button_handler);
-	debo_add(PIN_KEY_3, game_button_handler);
-	debo_add(PIN_KEY_4, game_button_handler);
+	debo_add(PIN_KEY_1, onGameButton);
+	debo_add(PIN_KEY_2, onGameButton);
+	debo_add(PIN_KEY_3, onGameButton);
+	debo_add(PIN_KEY_4, onGameButton);
 
 	// Timer 1 - CTC, to 16000 (1 ms interrupt)
 	OCR1A = 16000;

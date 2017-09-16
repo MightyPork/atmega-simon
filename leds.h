@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 
+extern volatile uint8_t led_brightness_mul;
+
 /**
  * Set led colors
  *

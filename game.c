@@ -25,15 +25,20 @@
 #define C_OKGREEN rgb24(20,160,0)
 #define C_CRIMSON rgb24(220,0,5)
 
-#define C_DIMRED rgb24(100,0,0)
-#define C_DIMGREEN rgb24(0,100,0)
-#define C_DIMBLUE rgb24(0,0,80)
-#define C_DIMYELLOW rgb24(50,45,0)
+//#define C_DIMRED rgb24(100,0,0)
+//#define C_DIMGREEN rgb24(0,100,0)
+//#define C_DIMBLUE rgb24(0,0,80)
+//#define C_DIMYELLOW rgb24(50,45,0)
 
 #define C_BRTRED rgb24(255,0,0)
 #define C_BRTGREEN rgb24(0,255,0)
 #define C_BRTBLUE rgb24(0,0,255)
 #define C_BRTYELLOW rgb24(127,110,0)
+
+#define C_DIMRED rgb24((int)(255*0.3),0,0)
+#define C_DIMGREEN rgb24(0,(int)(255*0.3),0)
+#define C_DIMBLUE rgb24(0,0,(int)(255*0.3))
+#define C_DIMYELLOW rgb24((int)(127*0.3),(int)(110*0.3),0)
 
 // assign to positions
 
@@ -51,6 +56,7 @@
 
 enum GameState_enum {
 	STATE_NEW_GAME, // new game, waiting for key
+	STATE_GAME_STARTING, // new game, initial anim
 	STATE_REPLAY, // showing sequence
 	STATE_USER_INPUT, // waiting for user input of repeated sequence
 	STATE_SUCCESS_EFFECT, // entered OK, show some fireworks
@@ -58,48 +64,95 @@ enum GameState_enum {
 };
 
 /** Current game state */
-enum GameState_enum GameState = STATE_NEW_GAME;
+static enum GameState_enum GameState = STATE_NEW_GAME;
 
-volatile bool holding_new_game_button = false;
+static volatile bool holding_new_game_button = false;
 
 /** Screen colors */
-uint32_t screen[4] = {0, 0, 0, 0};
-const uint32_t brt[4] = {C_BRT1, C_BRT2, C_BRT3, C_BRT4};
-const uint32_t dim[4] = {C_DIM1, C_DIM2, C_DIM3, C_DIM4};
-const uint32_t dark[4] = {C_DARK, C_DARK, C_DARK, C_DARK};
-const uint32_t dimwhite[4] = {C_DIMWHITE, C_DIMWHITE, C_DIMWHITE, C_DIMWHITE};
+static uint32_t screen[4] = {0, 0, 0, 0};
+
+static const uint32_t brt[4] = {C_BRT1, C_BRT2, C_BRT3, C_BRT4};
+static const uint32_t dim[4] = {C_DIM1, C_DIM2, C_DIM3, C_DIM4};
+//static const uint32_t dark[4] = {C_DARK, C_DARK, C_DARK, C_DARK};
+//static const uint32_t dimwhite[4] = {C_DIMWHITE, C_DIMWHITE, C_DIMWHITE, C_DIMWHITE};
 
 #define REPLAY_INTERVAL 400
 #define REPLAY_INTERVAL_GAP 75
 #define SUC_EFF_TIME 500
-#define FAIL_EFF_TIME 1000
 
 /** Nr of revealed colors in sequence */
-uint8_t game_revealed_n;
+static uint8_t game_revealed_n;
 /** Nr of next color to replay/input */
-uint8_t game_replay_n;
+static uint8_t game_replay_n;
 /** Nr of succ repeated colors */
-uint8_t game_repeat_n;
+static uint8_t game_repeat_n;
 
-void enter_state(enum GameState_enum state);
+static void enterGameState(enum GameState_enum state);
+
+void idle_anim_init(void);
+
+void idle_anim(void)
+;
 
 /** Show current screen colors */
-void show_screen()
+static void show_screen()
 {
 	leds_set(screen);
 }
 
 /** Enter state - callback for delayed state change */
-void deferred_enter_state(void *state)
+static void delayedEnterStateCb(void *state)
 {
 	// clear flag that button was held
 	holding_new_game_button = false;
 
-	enter_state((enum GameState_enum) state);
+	enterGameState((enum GameState_enum) state);
+}
+
+/** starting a game */
+static void newGameCountdownCb(void *state)
+{
+	int steps = (int) state;
+
+	if (steps == 0) {
+		display_show(0,0); // clear all
+		// start playback with a delay
+		// this makes it obvious the playback is not a feedback to the pressed button
+		schedule_task(delayedEnterStateCb, (void *) STATE_REPLAY, 500, false);
+		return;
+	}
+
+	display_show_number((uint8_t) steps);
+	steps--;
+
+	schedule_task(newGameCountdownCb, (void *) steps, 500, false);
+
+}
+
+static void fadeInColorsCb(void *stepsToGo)
+{
+	uint8_t steps = (uint8_t) (int) stepsToGo;
+	if (led_brightness_mul < 255) led_brightness_mul += 1;
+
+	steps -= 1;
+	if (steps>0) {
+		schedule_task(fadeInColorsCb, (void *) (int) steps, 1, false);
+	}
+}
+
+static void fadeOutColorsCb(void *stepsToGo)
+{
+	uint8_t steps = (uint8_t) (int) stepsToGo;
+	if (led_brightness_mul > 0) led_brightness_mul -= 1;
+
+	steps -= 1;
+	if (steps>0) {
+		schedule_task(fadeOutColorsCb, (void *) (int) steps, 1, false);
+	}
 }
 
 /** Future task CB in replay seq */
-void replay_callback(void *onOff)
+static void replaySequenceCb(void *onOff)
 {
 	bool on = (bool) onOff;
 
@@ -113,61 +166,82 @@ void replay_callback(void *onOff)
 		game_replay_n++;
 		screen[color] = brt[color];
 		show_screen();
-		schedule_task(replay_callback, (void *) 0, REPLAY_INTERVAL, false);
+		schedule_task(replaySequenceCb, (void *) 0, REPLAY_INTERVAL, false);
 	} else {
 		// turning off
 		show_screen();
 
 		// Schedule next turning ON
 		if (game_replay_n < game_revealed_n) {
-			schedule_task(replay_callback, (void *) 1, REPLAY_INTERVAL_GAP, false);
+			schedule_task(replaySequenceCb, (void *) 1, REPLAY_INTERVAL_GAP, false);
 		} else {
-			enter_state(STATE_USER_INPUT);
-			//schedule_task(deferred_enter_state, (void *) STATE_USER_INPUT, 50, false);
+			// fade in the input hints
+			led_brightness_mul = 0;
+			memcpy(screen, dim, sizeof(screen));
+			show_screen();
+			enterGameState(STATE_USER_INPUT);
+
+			schedule_task(fadeInColorsCb, (void *) 255, 1, false);
 		}
 	}
 }
 
 /** SUCCESS effect */
-void suc_eff_callback(void *onOff)
+static void successEffectCb(void *onOff)
 {
 	bool on = (bool) onOff;
 
 	if (on) {
 		display_show_number(game_revealed_n-1);
 		for (uint8_t i = 0; i < 4; i++) screen[i] = C_OKGREEN;
-		schedule_task(suc_eff_callback, 0, SUC_EFF_TIME, false);
+		schedule_task(successEffectCb, 0, SUC_EFF_TIME, false);
 	} else {
 		for (uint8_t i = 0; i < 4; i++) screen[i] = C_DARK;
 
-		schedule_task(deferred_enter_state, (void *) STATE_REPLAY, 250, false);
+		schedule_task(delayedEnterStateCb, (void *) STATE_REPLAY, 250, false);
 	}
 
 	show_screen();
 }
 
 /** ERROR effect */
-void fail_eff_callback(void *onOff)
+static void failEffectCb(void *cnt)
 {
-	bool on = (bool) onOff;
+	int cn = (int)cnt;
+	bool on = ((cn)%2)==1;
 
 	if (on) {
 		for (int i = 0; i < 4; i++) screen[i] = C_CRIMSON;
-		schedule_task(fail_eff_callback, 0, FAIL_EFF_TIME, false);
 	} else {
 		for (int i = 0; i < 4; i++) screen[i] = C_DARK;
-
-		schedule_task(deferred_enter_state, (void *) STATE_NEW_GAME, 250, false);
 	}
 
 	show_screen();
+
+	cn--;
+	if (cn == 0) {
+		schedule_task(delayedEnterStateCb, (void *) STATE_NEW_GAME, 250, false);
+	} else {
+		schedule_task(failEffectCb, (void *) cn, 250, false);
+	}
 }
 
+/** Prepare new sequence, using time for seed. */
+static void prepareNewSequence()
+{
+	rng_set_seed(time_ms);
+	rng_restart();
+}
+
+task_pid_t fadeout_pid;
+task_pid_t fadein_pid;
+
+volatile bool first_start = true;
 /**
  * @brief Enter a game state
  * @param state
  */
-void enter_state(enum GameState_enum state)
+static void enterGameState(enum GameState_enum state)
 {
 	GameState = state;
 
@@ -176,22 +250,41 @@ void enter_state(enum GameState_enum state)
 			usart_puts("State: new game\r\n");
 			// new game - idle state before new game is started
 
-			// all dimly lit
-			for (int i = 0; i < 4; i++) screen[i] = 0; //C_DIMWHITE
+			for (int i = 0; i < 4; i++) screen[i] = 0;
+			led_brightness_mul = 0; // fading in...
+
+			if (first_start) {
+				abort_scheduled_task(fadeout_pid);
+				fadein_pid = schedule_task(fadeInColorsCb, (void *) 255, 1, false);
+			}
+			break;
+
+		case STATE_GAME_STARTING:
+			first_start = false;
+
+			usart_puts("game begins\r\n");
+			// user wants to start playing
+			prepareNewSequence();
+			game_revealed_n = 1; // start with 1 revealed
+
+			abort_scheduled_task(fadein_pid);
+			fadeout_pid = schedule_task(fadeOutColorsCb, (void *) 255, 1, false);
+			schedule_task(newGameCountdownCb, (void *) 5, 500, false);
 			break;
 
 		case STATE_REPLAY:
+			led_brightness_mul = 255;
 			usart_puts("State: replay\r\n");
 			game_replay_n = 0;
 			rng_restart();
+			display_show_number(game_revealed_n-1);
 
 			// Start replay
-			replay_callback((void *) 1);
+			replaySequenceCb((void *) 1);
 			break;
 
 		case STATE_USER_INPUT:
 			usart_puts("State: repeat\r\n");
-			memcpy(screen, dim, sizeof(screen));
 
 			// Start entering & checking
 			game_repeat_n = 0;
@@ -202,43 +295,44 @@ void enter_state(enum GameState_enum state)
 			usart_puts("State: succ\r\n");
 			memcpy(screen, dim, sizeof(screen));
 			//suc_eff_callback((void *) 1);
-			schedule_task(suc_eff_callback, (void *) 1, 250, false);
+			schedule_task(successEffectCb, (void *) 1, 250, false);
 			break;
 
 		case STATE_FAIL_EFFECT:
 			usart_puts("State: fail\r\n");
 			memcpy(screen, dim, sizeof(screen));
 			//fail_eff_callback((void *) 1);
-			schedule_task(fail_eff_callback, (void *) 1, 250, false);
+			schedule_task(failEffectCb, (void *) 5, 250, false);
 			break;
 	}
 
 	show_screen();
 }
 
-/** Prepare new sequence, using time for seed. */
-void prepare_sequence()
-{
-	rng_set_seed(time_ms);
-	rng_restart();
-}
-
 volatile uint16_t idle_cnt = 0;
+
+
 
 /** game main function */
 void game_main(void)
 {
-	display_show(SEG_G, SEG_G); // two dashes...
-	enter_state(STATE_NEW_GAME);
+	idle_anim_init();
+
+	display_show(0, 0);
+	enterGameState(STATE_NEW_GAME);
 	// we'll init the sequence when user first presses a button - the time is used as a seed
 
 	enum GameState_enum last_state = STATE_NEW_GAME;
 	while (1) {
 		if (GameState == last_state) {
 			if (GameState == STATE_NEW_GAME) {
-				if (idle_cnt == 25 && !holding_new_game_button) {
+				if (!first_start && idle_cnt == 50 && !holding_new_game_button) {
 					usart_puts("clear highscore display\r\n");
-					display_show(SEG_G, SEG_G);
+					display_show(0, 0);
+
+					// start fading
+					abort_scheduled_task(fadeout_pid);
+					fadein_pid = schedule_task(fadeInColorsCb, (void *) 255, 1, false);
 				}
 
 				if (idle_cnt == 3000) {
@@ -256,9 +350,9 @@ void game_main(void)
 				if (idle_cnt > 200) {
 					// reset state
 					usart_puts("game reset, user walked away\r\n");
-					enter_state(STATE_NEW_GAME);
+					enterGameState(STATE_NEW_GAME);
 					show_screen();
-					display_show(SEG_G, SEG_G);
+					display_show(0, 0);
 					idle_cnt = 0;
 				}
 			}
@@ -268,7 +362,14 @@ void game_main(void)
 		}
 
 		idle_cnt++;
-		delay_ms(100);
+
+		for (int  i = 0; i < 10; i++) {
+			delay_ms(10);
+			if (GameState == STATE_NEW_GAME) {
+				// we can do some idle animation here
+				idle_anim();
+			}
+		}
 	}
 }
 
@@ -277,7 +378,7 @@ void game_main(void)
  * @param button: button identifier
  * @param press: press state (1 = just pressed, 0 = just released)
  */
-void game_button_handler(uint8_t button, bool press)
+void onGameButton(uint8_t button, bool press)
 {
 	// convert to 0-3
 	button--;
@@ -287,24 +388,12 @@ void game_button_handler(uint8_t button, bool press)
 			if (press) {
 				usart_puts("pressed a new-game button\r\n");
 				// feedback
-				display_show_number(0); // show 0
+				display_show(SEG_D|SEG_E|SEG_F|SEG_A, SEG_A|SEG_B|SEG_C|SEG_D);
 				holding_new_game_button = true;
 			}
 
 			if (!press) { // released
-				usart_puts("game begins\r\n");
-				// user wants to start playing
-				prepare_sequence();
-				game_revealed_n = 1; // start with 1 revealed
-
-				// darken
-				//memcpy(screen, dark, sizeof(screen));
-				//show_screen();
-
-				// start playback with a delay
-				// this makes it obvious the playback is not a feedback to the pressed button
-				schedule_task(deferred_enter_state, (void *) STATE_REPLAY, 500, false);
-				//enter_state(STATE_REPLAY);
+				enterGameState(STATE_GAME_STARTING);
 			}
 			break;
 
@@ -328,11 +417,11 @@ void game_button_handler(uint8_t button, bool press)
 					if (game_repeat_n == game_revealed_n) {
 						usart_puts("repeated all, good work!\r\n");
 						game_revealed_n++;
-						enter_state(STATE_SUCCESS_EFFECT);
+						enterGameState(STATE_SUCCESS_EFFECT);
 					}
 				} else {
 					usart_puts("oops bad key\r\n");
-					enter_state(STATE_FAIL_EFFECT);
+					enterGameState(STATE_FAIL_EFFECT);
 				}
 			}
 
@@ -343,4 +432,77 @@ void game_button_handler(uint8_t button, bool press)
 			usart_puts("discard button press, not expecting input now\r\n");
 			break;
 	}
+}
+
+// -------------------------------
+
+const uint8_t anim_step = 1;
+const uint8_t anim_max = 60;
+
+xrgb_t color1;
+uint8_t step1;
+xrgb_t color2;
+uint8_t step2;
+xrgb_t color3;
+uint8_t step3;
+xrgb_t color4;
+uint8_t step4;
+
+void idle_anim_init(void)
+{
+	color1 = xrgb(anim_max, 0, 0);
+	step1 = 0;
+
+	color2 = xrgb(anim_max, anim_max, 0);
+	step2 = 1;
+
+	color3 = xrgb(0, anim_max, 0);
+	step3 = 2;
+
+	color4 = xrgb(0, anim_max, anim_max);
+	step4 = 3;
+}
+
+void idle_anim_oneled(xrgb_t *color, uint8_t *step)
+{
+	switch (*step) {
+		case 0:
+			color->g += anim_step;
+			if (color->g >= anim_max) *step = *step + 1;
+			break;
+		case 1:
+			color->r -= anim_step;
+			if (color->r == 0)  *step = *step + 1;
+			break;
+		case 2:
+			color->b += anim_step;
+			if (color->b >= anim_max) *step = *step + 1;
+			break;
+		case 3:
+			color->g -= anim_step;
+			if (color->g == 0) *step = *step + 1;
+			break;
+		case 4:
+			color->r += anim_step;
+			if (color->r >= anim_max) *step = *step + 1;
+			break;
+		default:
+			color->b -= anim_step;
+			if (color->b == 0) *step = 0;
+			break;
+	}
+}
+
+
+void idle_anim(void)
+{
+	idle_anim_oneled(&color1, &step1);
+	idle_anim_oneled(&color2, &step2);
+	idle_anim_oneled(&color3, &step3);
+	idle_anim_oneled(&color4, &step4);
+	screen[0] = xrgb_rgb24(color1);
+	screen[1] = xrgb_rgb24(color2);
+	screen[2] = xrgb_rgb24(color3);
+	screen[3] = xrgb_rgb24(color4);
+	show_screen();
 }
