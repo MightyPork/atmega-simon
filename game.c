@@ -181,7 +181,7 @@ static void replaySequenceCb(void *onOff)
 			show_screen();
 			enterGameState(STATE_USER_INPUT);
 
-			schedule_task(fadeInColorsCb, (void *) 255, 400, false);
+			schedule_task(fadeInColorsCb, (void *) 255, 350, false);
 		}
 	}
 }
@@ -347,13 +347,13 @@ void game_main(void)
 					while(1); // wait for shutdown
 				}
 			} else {
-				if (idle_cnt > 200) {
+				if (idle_cnt > 300) {
 					// reset state
 					usart_puts("game reset, user walked away\r\n");
 					enterGameState(STATE_NEW_GAME);
 					show_screen();
 					display_show(0, 0);
-					idle_cnt = 0;
+					idle_cnt = 49; // fade in rainbow quickly
 				}
 			}
 		} else {

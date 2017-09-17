@@ -111,7 +111,7 @@ void task_check_shutdown_btn(void *unused) {
 		_delay_ms(100);
 		// Wait for user to release
 		while (pin_read(PIN_PWR_KEY));
-		_delay_ms(500);
+		_delay_ms(100);
 
 		// shut down
 		pin_down(PIN_PWR_HOLD);
