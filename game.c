@@ -181,7 +181,7 @@ static void replaySequenceCb(void *onOff)
 			show_screen();
 			enterGameState(STATE_USER_INPUT);
 
-			schedule_task(fadeInColorsCb, (void *) 255, 1, false);
+			schedule_task(fadeInColorsCb, (void *) 255, 400, false);
 		}
 	}
 }
