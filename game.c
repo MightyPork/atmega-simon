@@ -437,7 +437,7 @@ void onGameButton(uint8_t button, bool press)
 // -------------------------------
 
 const uint8_t anim_step = 1;
-const uint8_t anim_max = 60;
+const uint8_t anim_max = 75;
 
 xrgb_t color1;
 uint8_t step1;
