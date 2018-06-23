@@ -18,6 +18,7 @@ const uint8_t disp_digits[10] = {
 #define adc_samps_len 16
 uint8_t adc_samps[adc_samps_len];
 uint8_t adc_samp_i = 0;
+bool adc_samp_notfilled = true;
 
 #define light_sens_countdown_max 800
 uint16_t light_sens_countdown = 0;
@@ -73,6 +74,14 @@ ISR(TIMER2_OVF_vect)
 			
 			// averaging
 			adc_samps[adc_samp_i++] = brt;
+			// prefill all with the first measure to prevent the hiccup on startup
+			if (adc_samp_notfilled) {
+				adc_samp_notfilled = false;
+				for (uint8_t i = 0; i < adc_samps_len; i++) {
+					adc_samps[i] = brt;
+				}
+			}
+			
 			if (adc_samp_i == adc_samps_len) adc_samp_i = 0;
 			uint16_t sum = 0;
 			for (uint8_t i = 0; i < adc_samps_len; i++) {
