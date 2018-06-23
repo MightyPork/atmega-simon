@@ -15,6 +15,13 @@ const uint8_t disp_digits[10] = {
 	DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9
 };
 
+#define adc_samps_len 16
+uint8_t adc_samps[adc_samps_len];
+uint8_t adc_samp_i = 0;
+
+#define light_sens_countdown_max 800
+uint16_t light_sens_countdown = 0;
+
 volatile uint8_t disp_brightness;
 
 void display_show(uint8_t dig0, uint8_t dig1)
@@ -57,9 +64,23 @@ ISR(TIMER2_OVF_vect)
 {
 	// convert in background
 	if (adc_ready()) {
-		disp_brightness = 255 - adc_read_8bit(); // inverse
-		if (disp_brightness < 10) disp_brightness = 10;
-		adc_start_conversion(LIGHT_ADC_CHANNEL);
+		if (light_sens_countdown++ == light_sens_countdown_max) {
+			light_sens_countdown = 0;
+			
+			uint8_t brt = 255 - adc_read_8bit(); // inverse
+			if (brt < 10) brt = 10;
+			adc_start_conversion(LIGHT_ADC_CHANNEL);
+			
+			// averaging
+			adc_samps[adc_samp_i++] = brt;
+			if (adc_samp_i == adc_samps_len) adc_samp_i = 0;
+			uint16_t sum = 0;
+			for (uint8_t i = 0; i < adc_samps_len; i++) {
+				sum += adc_samps[i];
+			}
+			sum /= adc_samps_len;
+			disp_brightness = sum;
+		}
 	}
 
 	OCR2B = disp_brightness;

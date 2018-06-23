@@ -324,9 +324,10 @@ void game_main(void)
 
 	enum GameState_enum last_state = STATE_NEW_GAME;
 	while (1) {
+		// loop period is 100 ms
 		if (GameState == last_state) {
 			if (GameState == STATE_NEW_GAME) {
-				if (!first_start && idle_cnt == 50 && !holding_new_game_button) {
+				if (!first_start && idle_cnt == 30 && !holding_new_game_button) {
 					usart_puts("clear highscore display\r\n");
 					display_show(0, 0);
 
