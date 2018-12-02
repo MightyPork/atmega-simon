@@ -3,7 +3,7 @@ project(firmware)
 
 # Fake CMake config for CLion
 
-set(CMAKE_CXX_STANDARD GNU99)
+set(CMAKE_CXX_STANDARD 98)
 
 set(SOURCE_FILES
         lib/calc.h
